@@ -222,10 +222,14 @@ async function syncData() {
 async function auth(url) {
     const username = document.getElementById('lUser').value;
     const password = document.getElementById('lPass').value;
-    const formData = new FormData();
-    formData.append('username', username);
-    formData.append('password', password);
-    const res = await fetch(url, { method: 'POST', body: formData });
+    const params = new URLSearchParams();
+    params.append('username', username);
+    params.append('password', password);
+    const res = await fetch(url, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params 
+    });
     if (res.ok) {
         if (url === '/token') {
             const data = await res.json();
@@ -236,7 +240,8 @@ async function auth(url) {
             alert('Registered! Please login.');
         }
     } else {
-        alert('Error: ' + (await res.json()).detail);
+        const err = await res.json();
+        alert('Error: ' + (err.detail || 'Something went wrong'));
     }
 }
 document.getElementById('lBtn').onclick = () => auth('/token');
