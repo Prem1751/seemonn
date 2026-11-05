@@ -135,7 +135,6 @@ textarea.f{min-height:80px;font-size:.8rem}
   <label class="cam" for="camIn" aria-label="ถ่ายรูป"><span data-ic="cam"></span></label>
   <button data-a="nav" data-go="expense"><span data-ic="expense"></span>รายจ่าย</button>
   <button data-a="nav" data-go="more"><span data-ic="more"></span>อื่นๆ</button>
-  <button data-a="profile" aria-label="โปรไฟล์"><span data-ic="pen"></span>โปรไฟล์</button>
 </div></nav>
 <input type="file" id="camIn" class="vh" accept="image/*" capture="environment">
 <input type="file" id="albIn" class="vh" accept="image/*" multiple>
@@ -191,95 +190,12 @@ textarea.f{min-height:80px;font-size:.8rem}
 
 <div class="sheet" id="sBk" role="dialog" aria-label="สมุดบัญชี"><h2>สมุด (กดชื่อเพื่อสลับ)</h2><small style="display:block;margin:-6px 0 10px">สมุด = แยกเงินคนละเรื่อง เช่น ส่วนตัว กลุ่ม ธุรกิจ จะได้ไม่ปนกัน</small><div id="bks"></div></div>
 <div class="sheet" id="sInv" role="dialog" aria-label="ใบกำกับภาษี"><div id="ivBody"></div></div>
-<div class="sheet" id="sProfile" role="dialog" aria-label="โปรไฟล์">
-  <h2>โปรไฟล์</h2>
-  <p id="pUser" style="margin-bottom:12px;font-weight:600;"></p>
-  <button class="primary" id="logoutBtn">ออกจากระบบ</button>
-</div>
-<div class="sheet" id="sLogin" role="dialog" aria-label="Login">
-  <h2>Login</h2>
-  <label>Username</label><input class="f" id="lUser" type="text">
-  <label>Password</label><input class="f" id="lPass" type="password">
-  <button class="primary" id="lBtn">Login</button>
-  <button class="link" id="rBtn">Register</button>
-</div>
-<div class="sheet" id="sBell" role="dialog" aria-label="การแจ้งเตือน">
-<h2>การแจ้งเตือน</h2><label class="ghost" for="albIn" data-a="alb" style="display:grid;place-items:center;color:var(--ink);cursor:pointer;margin-bottom:8px">+ เลือกสลิปจากอัลบั้ม</label><div id="nts"></div></div>
+<div class="sheet" id="sBell" role="dialog" aria-label="การแจ้งเตือน"><h2>การแจ้งเตือน</h2><label class="ghost" for="albIn" data-a="alb" style="display:grid;place-items:center;color:var(--ink);cursor:pointer;margin-bottom:8px">+ เลือกสลิปจากอัลบั้ม</label><div id="nts"></div></div>
 
 <div class="errb" id="errb" hidden data-a="errx"></div>
 <div class="sheet" id="sTut" role="dialog" aria-label="Welcome"><div id="tutBody"></div></div>
 <script>
-// --- Auth Logic ---
-async function syncData() {
-    const token = localStorage.getItem('jwt_token');
-    if (!token) return;
-    await fetch('/api/data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-        body: JSON.stringify({ items, D })
-    });
-}
-async function auth(url) {
-    const username = document.getElementById('lUser').value;
-    const password = document.getElementById('lPass').value;
-    const params = new URLSearchParams();
-    params.append('username', username);
-    params.append('password', password);
-    const res = await fetch(url, { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: params 
-    });
-    if (res.ok) {
-        if (url === '/token') {
-            const data = await res.json();
-            localStorage.setItem('jwt_token', data.access_token);
-            localStorage.setItem('username', username);
-            location.reload();
-        } else {
-            alert('Registered! Please login.');
-        }
-    } else {
-        const err = await res.json();
-        alert('Error: ' + (err.detail || 'Something went wrong'));
-    }
-}
-document.getElementById('lBtn').onclick = () => auth('/token');
-document.getElementById('rBtn').onclick = () => auth('/register');
-
-// --- Profile UI Logic ---
-document.getElementById('logoutBtn').onclick = () => {
-    localStorage.removeItem('jwt_token');
-    localStorage.removeItem('username');
-    location.reload();
-};
-function updateProfileUI() {
-    const username = localStorage.getItem('username');
-    if (username) document.getElementById('pUser').textContent = 'ผู้ใช้: ' + username;
-}
-updateProfileUI();
-// --------------------
-
-const token = localStorage.getItem('jwt_token');
-if (!token) {
-    document.getElementById('sLogin').classList.add('open');
-    document.getElementById('scrim').classList.add('open');
-} else {
-    (async () => {
-        const res = await fetch('/api/data', { headers: { 'Authorization': 'Bearer ' + token } });
-        if (res.ok) {
-            const data = await res.json();
-            localStorage.setItem(KEY, JSON.stringify(data.items));
-            localStorage.setItem(DK, JSON.stringify(data.settings));
-            // Reload variables? The main script re-initializes them below.
-        } else {
-            localStorage.removeItem('jwt_token');
-            location.reload();
-        }
-    })();
-}
-// --- Existing script starts here ---
-const lastErr = '';
+let lastErr = '';
 window.addEventListener('error', e => { lastErr = String(e.message); const b = document.getElementById('errb'); if (b) { b.textContent = '⚠ ' + lastErr; b.hidden = false; } });
 const KEY = 'expense-tracker-v1', HK = 'et-hide', TK = 'et-theme', DK = 'et-data';
 const BASE = { expense: ['อาหาร', 'เดินทาง', 'ช้อปปิ้ง', 'บิลและค่าบริการ', 'บันเทิง', 'สุขภาพ', 'อื่นๆ'], income: ['เงินเดือน', 'ฟรีแลนซ์', 'โบนัส', 'อื่นๆ'] };
@@ -300,7 +216,7 @@ const ic = k => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" str
 const $ = id => document.getElementById(id), pad = n => String(n).padStart(2, '0');
 const ds = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`, ts = d => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 const ld = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) || d; } catch (e) { return d; } };
-const sv = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); if (k === KEY || k === DK) syncData(); return true; } catch (e) { return false; } };
+const sv = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const m = (n, h) => h ? '฿ xxxx' : (n < 0 ? '−' : '') + '฿' + Math.abs(n).toLocaleString(LOC, { maximumFractionDigits: 2 });
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
@@ -583,7 +499,6 @@ const A = {
     if (g === 'home') { view = 'ov'; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
     else if (g === 'cam') $('camIn').click();
     else if (g === 'more') { drawCats(); drawRules(); drawMx(); $('slipOK').checked = !!D.slipOK; setTab('more'); openSheet('sMore'); }
-    else if (b.dataset.a === 'profile') document.getElementById('sProfile').classList.add('open');
     else openAdd(g);
   },
   close: closeSheets,

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>seemon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="splash" id="splash"><div><b>seemon</b><small>see your money</small></div></div>
+<div class="wrap">
+  <div class="hd2"><button class="pill" id="bkBtn" data-a="bkOpen" aria-label="สลับสมุดบัญชี"></button><b style="font-weight:600;letter-spacing:-.02em">seemon</b><button class="eye bl" id="bellBtn" data-a="bell" aria-label="การแจ้งเตือน"></button></div>
+  <div class="tabs" id="tabs">
+    <button data-a="tab" data-v="ov">ภาพรวม</button><button data-a="tab" data-v="td">วันนี้</button><button data-a="tab" data-v="gl">เป้าหมาย</button><button data-a="tab" data-v="hs">ประวัติ</button><button data-a="tab" data-v="iv" id="ivTab" hidden>ใบกำกับ</button>
+  </div>
+  <main id="main"></main>
+</div>
+
+<nav class="bar"><div>
+  <button data-a="nav" data-go="home"><span data-ic="home"></span>หน้าแรก</button>
+  <button data-a="nav" data-go="income"><span data-ic="income"></span>รายรับ</button>
+  <label class="cam" for="camIn" aria-label="ถ่ายรูป"><span data-ic="cam"></span></label>
+  <button data-a="nav" data-go="expense"><span data-ic="expense"></span>รายจ่าย</button>
+  <button data-a="nav" data-go="more"><span data-ic="more"></span>อื่นๆ</button>
+  <button data-a="profile" aria-label="โปรไฟล์"><span data-ic="pen"></span>โปรไฟล์</button>
+</div></nav>
+<input type="file" id="camIn" class="vh" accept="image/*" capture="environment">
+<input type="file" id="albIn" class="vh" accept="image/*" multiple>
+<div class="scrim" id="scrim" data-a="close"></div>
+<div class="toast" id="toast" role="status"></div>
+
+<div class="sheet" id="sQ" role="dialog" aria-label="บันทึกด่วน">
+  <img id="qImg" alt="รูปที่ถ่าย">
+  <h2>บันทึกรูปนี้เป็น</h2>
+  <div class="two"><button data-a="q" data-t="income">รายรับ</button><button data-a="q" data-t="expense">รายจ่าย</button></div>
+  <small style="display:block;margin-top:8px">ใส่จำนวนเงินและรายละเอียดทีหลังได้</small>
+  <button class="link" data-a="close">ยกเลิก</button>
+</div>
+
+<div class="sheet" id="sAdd" role="dialog" aria-label="เพิ่มรายการ">
+  <div class="seg" id="seg"><button data-a="sty" data-t="expense">รายจ่าย</button><button data-a="sty" data-t="income">รายรับ</button></div>
+  <input class="f big" id="amount" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0" aria-label="จำนวนเงิน">
+  <label>เวลา</label>
+  <div class="two" id="tm"><button data-a="md" data-m="now">ตอนนี้</button><button data-a="md" data-m="custom">วัน/เวลา</button></div>
+  <div id="dtw" hidden style="margin-top:8px"><div class="chips" id="dch"></div><div class="tmr"><input class="f" id="dd" type="date" aria-label="วันที่"><input class="f" id="tt" type="time" aria-label="เวลา"></div></div>
+  <label>หมวดหมู่ (เรียงตามที่ใช้บ่อย)</label>
+  <div class="chips" id="chips"></div>
+  <label for="note">รายละเอียด</label>
+  <input class="f" id="note" type="text" placeholder="เช่น ข้าวเที่ยง">
+  <label>ช่องทางเงิน</label><div class="chips" id="wl"></div>
+  <label id="vatL" hidden><input type="checkbox" id="vat"> ราคานี้รวม VAT 7%</label>
+  <div class="pv" id="pv" hidden><img id="pvImg" alt="รูปแนบ"><button class="ghost" data-a="pvDel">เอารูปออก</button></div>
+  <button class="primary" id="save" data-a="save">บันทึก</button>
+  <button class="link" id="delBtn" data-a="del" hidden>ลบรายการนี้</button>
+  <div id="msg" role="status" class="mu" style="font-size:.85rem;min-height:1.2em"></div>
+</div>
+
+<div class="sheet" id="sMore" role="dialog" aria-label="อื่นๆ">
+  <h2>ธีม</h2>
+  <div class="two" style="grid-template-columns:repeat(3,1fr)" id="themes"><button data-a="th" data-th="auto">อัตโนมัติ</button><button data-a="th" data-th="light">สว่าง</button><button data-a="th" data-th="dark">มืด</button></div>
+  <h2 style="margin-top:20px">หมวดหมู่ของฉัน</h2>
+  <div id="cats"></div>
+  <h2 style="margin-top:20px">อ่านสลิปจากอัลบั้ม</h2>
+  <label style="display:flex;gap:8px;align-items:center;color:var(--ink);margin:0 0 8px"><input type="checkbox" id="slipOK"> อนุญาตให้อ่านสลิปจากรูปที่ฉันเลือก</label>
+  <label class="ghost" for="albIn" data-a="alb" style="display:grid;place-items:center;color:var(--ink);cursor:pointer">เลือกสลิปจากอัลบั้ม</label>
+  <small style="display:block;margin:6px 0">เว็บสแกนอัลบั้มเองอัตโนมัติไม่ได้ ต้องกดเลือกรูปสลิป (เลือกได้หลายรูปพร้อมกัน) ระบบอ่านเฉพาะสลิปธนาคาร</small>
+  <label>จัดหมวดอัตโนมัติตามชื่อในสลิป</label><div id="rules"></div>
+  <h2 style="margin-top:20px">เชื่อมธนาคาร</h2>
+  <p class="mu" style="font-size:.85rem;margin:0 0 8px">ดึงรายการและอ่านสลิปอัตโนมัติ (เร็วๆ นี้ ยังใช้งานจริงไม่ได้)</p>
+  <div class="chips wr"><button class="chip" disabled>K PLUS</button><button class="chip" disabled>SCB EASY</button><button class="chip" disabled>Krungthai NEXT</button><button class="chip" disabled>ธนาคารอื่น</button></div>
+  <h2 style="margin-top:20px">สำรองและนำเข้าข้อมูล</h2>
+  <p class="mu" style="font-size:.85rem;margin:0 0 8px">ข้อมูลเก็บในเบราว์เซอร์เครื่องนี้ ข้อมูลสำรองไม่รวมรูปแนบ</p>
+  <textarea class="f" id="backup" placeholder="ข้อมูลสำรองจะแสดงที่นี่"></textarea>
+  <div class="two" style="margin-top:8px"><button data-a="exp">สร้างข้อมูลสำรอง</button><button data-a="imp">นำเข้าข้อมูล</button></div>
+  <div id="msg2" class="mu" style="font-size:.85rem;margin-top:8px"></div>
+  <div id="mx"></div>
+</div>
+
+<div class="sheet" id="sBk" role="dialog" aria-label="สมุดบัญชี"><h2>สมุด (กดชื่อเพื่อสลับ)</h2><small style="display:block;margin:-6px 0 10px">สมุด = แยกเงินคนละเรื่อง เช่น ส่วนตัว กลุ่ม ธุรกิจ จะได้ไม่ปนกัน</small><div id="bks"></div></div>
+<div class="sheet" id="sInv" role="dialog" aria-label="ใบกำกับภาษี"><div id="ivBody"></div></div>
+<div class="sheet" id="sProfile" role="dialog" aria-label="โปรไฟล์">
+  <h2>โปรไฟล์</h2>
+  <p id="pUser" style="margin-bottom:12px;font-weight:600;"></p>
+  <button class="primary" id="logoutBtn">ออกจากระบบ</button>
+</div>
+<div class="sheet" id="sLogin" role="dialog" aria-label="Login">
+  <h2>Login / สมัครสมาชิก</h2>
+  <label>Username</label><input class="f" id="lUser" type="text" placeholder="ชื่อผู้ใช้">
+  <label>Password</label><input class="f" id="lPass" type="password" placeholder="รหัสผ่าน">
+  <button class="primary" id="lBtn">Login</button>
+  <button class="link" id="rBtn">Register (สมัครสมาชิก)</button>
+</div>
+<div class="sheet" id="sBell" role="dialog" aria-label="การแจ้งเตือน">
+<h2>การแจ้งเตือน</h2><label class="ghost" for="albIn" data-a="alb" style="display:grid;place-items:center;color:var(--ink);cursor:pointer;margin-bottom:8px">+ เลือกสลิปจากอัลบั้ม</label><div id="nts"></div></div>
+
+<div class="errb" id="errb" hidden data-a="errx"></div>
+<div class="sheet" id="sTut" role="dialog" aria-label="Welcome"><div id="tutBody"></div></div>
+
+<script src="script.js"></script>
+</body>
+</html>
