@@ -145,6 +145,7 @@ def register(username: str = Form(...), password: str = Form(...), db: Session =
         if db.query(User).filter(User.username == username).first():
             raise HTTPException(status_code=400, detail="Username นี้ถูกใช้งานแล้ว")
         
+        password = password[:72]  # Bcrypt limit is 72 bytes
         hashed_password = pwd_context.hash(password)
         user = User(username=username, hashed_password=hashed_password)
         db.add(user)
@@ -166,7 +167,8 @@ def register(username: str = Form(...), password: str = Form(...), db: Session =
 @app.post("/api/token")
 def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == form.username.strip()).first()
-    if not user or not pwd_context.verify(form.password, user.hashed_password):
+    plain_password = form.password[:72]
+    if not user or not pwd_context.verify(plain_password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Username หรือ Password ไม่ถูกต้อง")
     
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
