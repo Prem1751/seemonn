@@ -15,7 +15,13 @@ from datetime import datetime, timedelta
 SECRET_KEY = os.getenv("SECRET_KEY", "SUPER_SECRET_KEY_SEEMON_APP")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days session
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./expenses.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "")
+if not DATABASE_URL:
+    if os.getenv("VERCEL"):
+        DATABASE_URL = "sqlite:////tmp/expenses.db"
+    else:
+        DATABASE_URL = "sqlite:///./expenses.db"
+
 GOOGLE_SHEET_WEBHOOK_URL = os.getenv("GOOGLE_SHEET_WEBHOOK_URL", "")
 APPSHEET_APP_ID = os.getenv("APPSHEET_APP_ID", "")
 APPSHEET_ACCESS_KEY = os.getenv("APPSHEET_ACCESS_KEY", "")
@@ -132,24 +138,29 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 @app.post("/register")
 @app.post("/api/register")
 def register(username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
-    username = username.strip()
-    if not username or not password:
-        raise HTTPException(status_code=400, detail="กรุณากรอก Username และ Password")
-    if db.query(User).filter(User.username == username).first():
-        raise HTTPException(status_code=400, detail="Username นี้ถูกใช้งานแล้ว")
-    
-    hashed_password = pwd_context.hash(password)
-    user = User(username=username, hashed_password=hashed_password)
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    
-    # Init empty user data
-    user_data = UserData(user_id=user.id, items_json="[]", settings_json="{}")
-    db.add(user_data)
-    db.commit()
-    
-    return {"message": "สมัครสมาชิกสำเร็จ"}
+    try:
+        username = username.strip()
+        if not username or not password:
+            raise HTTPException(status_code=400, detail="กรุณากรอก Username และ Password")
+        if db.query(User).filter(User.username == username).first():
+            raise HTTPException(status_code=400, detail="Username นี้ถูกใช้งานแล้ว")
+        
+        hashed_password = pwd_context.hash(password)
+        user = User(username=username, hashed_password=hashed_password)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        
+        # Init empty user data
+        user_data = UserData(user_id=user.id, items_json="[]", settings_json="{}")
+        db.add(user_data)
+        db.commit()
+        
+        return {"message": "สมัครสมาชิกสำเร็จ"}
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Server Error: {str(e)}")
 
 @app.post("/token")
 @app.post("/api/token")
