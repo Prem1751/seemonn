@@ -1,74 +1,3 @@
-// --- Auth & Sync ---
-async function syncData() {
-    const token = localStorage.getItem('jwt_token');
-    if (!token) return;
-    await fetch('/api/data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-        body: JSON.stringify({ items, D })
-    });
-}
-async function auth(url) {
-    const username = document.getElementById('lUser').value;
-    const password = document.getElementById('lPass').value;
-    const params = new URLSearchParams();
-    params.append('username', username);
-    params.append('password', password);
-    const res = await fetch('/api' + url, { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: params 
-    });
-    if (res.ok) {
-        if (url === '/token') {
-            const data = await res.json();
-            localStorage.setItem('jwt_token', data.access_token);
-            localStorage.setItem('username', username);
-            location.reload();
-        } else {
-            alert('Registered! Please login.');
-        }
-    } else {
-        const err = await res.json();
-        alert('Error: ' + (err.detail || 'Something went wrong'));
-    }
-}
-document.getElementById('lBtn').onclick = () => auth('/token');
-document.getElementById('rBtn').onclick = () => auth('/register');
-
-// --- Profile UI Logic ---
-document.getElementById('logoutBtn').onclick = () => {
-    localStorage.removeItem('jwt_token');
-    localStorage.removeItem('username');
-    location.reload();
-};
-function updateProfileUI() {
-    const username = localStorage.getItem('username');
-    if (username) document.getElementById('pUser').textContent = 'ผู้ใช้: ' + username;
-}
-updateProfileUI();
-
-const token = localStorage.getItem('jwt_token');
-if (!token) {
-    document.getElementById('sLogin').classList.add('open');
-    document.getElementById('scrim').classList.add('open');
-} else {
-    (async () => {
-        const res = await fetch('/api/data', { headers: { 'Authorization': 'Bearer ' + token } });
-        if (res.ok) {
-            const data = await res.json();
-            localStorage.setItem(KEY, JSON.stringify(data.items));
-            localStorage.setItem(DK, JSON.stringify(data.settings));
-        } else {
-            localStorage.removeItem('jwt_token');
-            location.reload();
-        }
-    })();
-}
-
-// --- Main Application Logic ---
-let lastErr = '';
-window.addEventListener('error', e => { lastErr = String(e.message); const b = document.getElementById('errb'); if (b) { b.textContent = '⚠ ' + lastErr; b.hidden = false; } });
 const KEY = 'expense-tracker-v1', HK = 'et-hide', TK = 'et-theme', DK = 'et-data';
 const BASE = { expense: ['อาหาร', 'เดินทาง', 'ช้อปปิ้ง', 'บิลและค่าบริการ', 'บันเทิง', 'สุขภาพ', 'อื่นๆ'], income: ['เงินเดือน', 'ฟรีแลนซ์', 'โบนัส', 'อื่นๆ'] };
 const COLORS = ['#7fb2e5', '#d9b27c', '#a995d9'];
@@ -119,6 +48,131 @@ function trEl(root) {
   if (root.querySelectorAll) root.querySelectorAll('[placeholder],[aria-label]').forEach(e => ['placeholder', 'aria-label'].forEach(a => { const v = e.getAttribute(a); if (v && TH.test(v)) e.setAttribute(a, tx(v)); }));
 }
 if (lang === 'en') new MutationObserver(ms => ms.forEach(q => q.addedNodes.forEach(n => n.nodeType === 1 ? trEl(n) : n.nodeType === 3 && TH.test(n.data) && (n.data = tx(n.data))))).observe(document.body, { childList: true, subtree: true });
+
+// --- Smart API Base URL Detection (Works on Localhost, File, and Vercel) ---
+function getApiUrl(path) {
+  const isLocal = window.location.protocol === 'file:' || 
+                 ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port !== '8000');
+  const baseUrl = isLocal ? 'http://127.0.0.1:8000' : '';
+  const cleanPath = path.startsWith('/') ? path : '/' + path;
+  return baseUrl + (cleanPath.startsWith('/api') ? cleanPath : '/api' + cleanPath);
+}
+
+// --- Auth & Sync ---
+async function syncData() {
+  const token = localStorage.getItem('jwt_token');
+  if (!token) return;
+  try {
+    await fetch(getApiUrl('/data'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ items, D })
+    });
+  } catch (err) {
+    console.warn('Sync failed:', err);
+  }
+}
+
+// --- Auth Mode Toggle & Functions ---
+let isRegisterMode = false;
+
+function setAuthMode(register) {
+  isRegisterMode = register;
+  if ($('authTitle')) $('authTitle').textContent = isRegisterMode ? 'สมัครสมาชิกใหม่' : 'เข้าสู่ระบบ (Login)';
+  if ($('lBtn')) $('lBtn').textContent = isRegisterMode ? 'ยืนยันสมัครสมาชิก' : 'เข้าสู่ระบบ';
+  if ($('rBtn')) $('rBtn').textContent = isRegisterMode ? 'มีบัญชีอยู่แล้ว? เข้าสู่ระบบ' : 'ยังไม่มีบัญชี? สมัครสมาชิกที่นี่';
+}
+
+async function auth() {
+  const actionPath = isRegisterMode ? '/register' : '/token';
+  const userEl = $('lUser'), passEl = $('lPass');
+  const username = userEl ? userEl.value.trim() : '';
+  const password = passEl ? passEl.value.trim() : '';
+  if (!username || !password) {
+    alert('กรุณากรอก Username และ Password ให้ครบถ้วน');
+    return;
+  }
+  const params = new URLSearchParams();
+  params.append('username', username);
+  params.append('password', password);
+
+  try {
+    const res = await fetch(getApiUrl(actionPath), { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params 
+    });
+
+    if (res.ok) {
+      if (!isRegisterMode) {
+        const data = await res.json();
+        localStorage.setItem('jwt_token', data.access_token);
+        localStorage.setItem('username', username);
+        location.reload();
+      } else {
+        alert('สมัครสมาชิกสำเร็จแล้ว! กรุณากรอกรหัสผ่านเพื่อเข้าสู่ระบบ');
+        setAuthMode(false);
+      }
+    } else {
+      const err = await res.json().catch(() => ({}));
+      alert('ข้อผิดพลาด: ' + (err.detail || 'ไม่สามารถดำเนินการได้'));
+    }
+  } catch (e) {
+    console.error('API Error:', e);
+    alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้\n(' + e.message + ')\n\nหากทดสอบในเครื่อง ให้แน่ใจว่าเปิด Uvicorn ทิ้งไว้');
+  }
+}
+
+// Bind auth buttons
+if ($('lBtn')) $('lBtn').onclick = auth;
+if ($('rBtn')) $('rBtn').onclick = () => setAuthMode(!isRegisterMode);
+
+// --- Profile UI Logic ---
+if ($('logoutBtn')) {
+  $('logoutBtn').onclick = () => {
+    localStorage.removeItem('jwt_token');
+    localStorage.removeItem('username');
+    location.reload();
+  };
+}
+function updateProfileUI() {
+  const username = localStorage.getItem('username');
+  if (username && $('pUser')) $('pUser').textContent = 'ผู้ใช้: ' + username;
+}
+updateProfileUI();
+
+// Check Login on Startup
+const token = localStorage.getItem('jwt_token');
+if (!token) {
+  if ($('sLogin')) $('sLogin').classList.add('open');
+  if ($('scrim')) $('scrim').classList.add('open');
+} else {
+  (async () => {
+    try {
+      const res = await fetch(getApiUrl('/data'), { headers: { 'Authorization': 'Bearer ' + token } });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.items) {
+          items = data.items;
+          localStorage.setItem(KEY, JSON.stringify(items));
+        }
+        if (data.settings && Object.keys(data.settings).length) {
+          D = Object.assign(D, data.settings);
+          localStorage.setItem(DK, JSON.stringify(D));
+        }
+        render();
+      } else if (res.status === 401) {
+        localStorage.removeItem('jwt_token');
+        location.reload();
+      }
+    } catch (e) {
+      console.warn('Could not fetch server data, using cached local data.', e);
+    }
+  })();
+}
+
+let lastErr = '';
+window.addEventListener('error', e => { lastErr = String(e.message); const b = document.getElementById('errb'); if (b) { b.textContent = '⚠ ' + lastErr; b.hidden = false; } });
 
 const GUIDE = () => [
   ['✍️', t('บันทึกรายการ', 'Add an entry'), t('แตะ “รายจ่าย” หรือ “รายรับ” ที่แถบล่าง พิมพ์จำนวนเงิน แล้วกดบันทึก เวลาเริ่มต้นคือตอนนี้ ถ้าลืมกรอกให้กด “วัน/เวลา” เพื่อย้อนหลัง', 'Tap Expense or Income on the bottom bar, type the amount and save. Time defaults to now; use Date/time to backdate.')],
@@ -466,7 +520,11 @@ const A = {
 document.addEventListener('click', e => {
   if (pmO && !e.target.closest('.pop,[data-a=pm]')) { pmO = false; render(); }
   const profileBtn = e.target.closest('[data-a="profile"]');
-  if (profileBtn) { document.getElementById('sProfile').classList.add('open'); document.getElementById('scrim').classList.add('open'); return; }
+  if (profileBtn) {
+    if ($('sProfile')) $('sProfile').classList.add('open');
+    if ($('scrim')) $('scrim').classList.add('open');
+    return;
+  }
   const b = e.target.closest('[data-a]');
   if (b && A[b.dataset.a]) A[b.dataset.a](b, e);
 });
@@ -483,5 +541,5 @@ document.addEventListener('change', e => {
 document.querySelectorAll('[data-ic]').forEach(e => e.innerHTML = ic(e.dataset.ic));
 let th0 = 'auto'; try { th0 = localStorage.getItem(TK) || 'auto'; } catch (e) {}
 applyTheme(th0); setTab('home'); render();
-trEl(document.body); setTimeout(() => $('splash').classList.add('out'), 1700);
-setTimeout(() => { $('splash').remove(); if (!D.seen) { tutI = D.langSet ? 0 : -1; drawTut(); openSheet('sTut'); } }, 2300);
+trEl(document.body); setTimeout(() => { if ($('splash')) $('splash').classList.add('out'); }, 1700);
+setTimeout(() => { if ($('splash')) $('splash').remove(); if (!D.seen) { tutI = D.langSet ? 0 : -1; drawTut(); openSheet('sTut'); } }, 2300);
