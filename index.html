@@ -82,14 +82,20 @@
 <div class="sheet" id="sBk" role="dialog" aria-label="สมุดบัญชี"><h2>สมุด (กดชื่อเพื่อสลับ)</h2><small style="display:block;margin:-6px 0 10px">สมุด = แยกเงินคนละเรื่อง เช่น ส่วนตัว กลุ่ม ธุรกิจ จะได้ไม่ปนกัน</small><div id="bks"></div></div>
 <div class="sheet" id="sInv" role="dialog" aria-label="ใบกำกับภาษี"><div id="ivBody"></div></div>
 <div class="sheet" id="sProfile" role="dialog" aria-label="โปรไฟล์">
-  <h2>โปรไฟล์</h2>
-  <p id="pUser" style="margin-bottom:12px;font-weight:600;"></p>
-  <button class="primary" id="logoutBtn">ออกจากระบบ</button>
+  <h2>โปรไฟล์ผู้ใช้</h2>
+  <div style="background:var(--hero);padding:14px;border-radius:14px;margin-bottom:14px">
+    <small style="display:block;color:var(--muted)">บัญชีที่ใช้งานอยู่</small>
+    <b id="pUser" style="font-size:1.2rem;display:block;margin-top:2px"></b>
+  </div>
+  <button class="primary" id="logoutBtn" style="background:#e55353">ออกจากระบบ</button>
 </div>
 <div class="sheet" id="sLogin" role="dialog" aria-label="Login">
   <h2 id="authTitle">เข้าสู่ระบบ (Login)</h2>
-  <label>Username (ชื่อผู้ใช้)</label><input class="f" id="lUser" type="text" placeholder="กรอกชื่อผู้ใช้">
-  <label>Password (รหัสผ่าน)</label><input class="f" id="lPass" type="password" placeholder="กรอกรหัสผ่าน">
+  <label for="lUser">Username (ชื่อผู้ใช้)</label>
+  <input class="f" id="lUser" type="text" placeholder="กรอกชื่อผู้ใช้ (อย่างน้อย 3 ตัวอักษร)" autocomplete="username">
+  <label for="lPass">Password (รหัสผ่าน)</label>
+  <input class="f" id="lPass" type="password" placeholder="กรอกรหัสผ่าน (อย่างน้อย 4 ตัวอักษร)" autocomplete="current-password">
+  <div id="authMsg" style="font-size:.85rem;min-height:1.2em;margin-top:10px;text-align:center;font-weight:500"></div>
   <button class="primary" id="lBtn">เข้าสู่ระบบ</button>
   <button class="link" id="rBtn">ยังไม่มีบัญชี? สมัครสมาชิกที่นี่</button>
 </div>

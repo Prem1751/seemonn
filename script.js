@@ -76,22 +76,66 @@ async function syncData() {
 // --- Auth Mode Toggle & Functions ---
 let isRegisterMode = false;
 
+function setAuthMsg(msg, type) {
+  const el = $('authMsg');
+  if (!el) return;
+  el.textContent = msg || '';
+  if (type === 'error') {
+    el.style.color = '#e55353';
+  } else if (type === 'success') {
+    el.style.color = '#2eb85c';
+  } else if (type === 'info') {
+    el.style.color = 'var(--accent)';
+  } else {
+    el.style.color = 'inherit';
+  }
+}
+
 function setAuthMode(register) {
   isRegisterMode = register;
+  setAuthMsg('', '');
+  if ($('lUser')) $('lUser').value = '';
+  if ($('lPass')) $('lPass').value = '';
   if ($('authTitle')) $('authTitle').textContent = isRegisterMode ? 'สมัครสมาชิกใหม่' : 'เข้าสู่ระบบ (Login)';
   if ($('lBtn')) $('lBtn').textContent = isRegisterMode ? 'ยืนยันสมัครสมาชิก' : 'เข้าสู่ระบบ';
   if ($('rBtn')) $('rBtn').textContent = isRegisterMode ? 'มีบัญชีอยู่แล้ว? เข้าสู่ระบบ' : 'ยังไม่มีบัญชี? สมัครสมาชิกที่นี่';
+  setTimeout(() => { if ($('lUser')) $('lUser').focus(); }, 150);
 }
 
 async function auth() {
   const actionPath = isRegisterMode ? '/register' : '/token';
-  const userEl = $('lUser'), passEl = $('lPass');
+  const userEl = $('lUser'), passEl = $('lPass'), btn = $('lBtn');
   const username = userEl ? userEl.value.trim() : '';
   const password = passEl ? passEl.value.trim() : '';
-  if (!username || !password) {
-    alert('กรุณากรอก Username และ Password ให้ครบถ้วน');
+
+  // Inline Validations
+  if (!username) {
+    setAuthMsg('กรุณากรอก Username (ชื่อผู้ใช้)', 'error');
+    if (userEl) userEl.focus();
     return;
   }
+  if (username.length < 3) {
+    setAuthMsg('ชื่อผู้ใช้ต้องมีความยาวอย่างน้อย 3 ตัวอักษร', 'error');
+    if (userEl) userEl.focus();
+    return;
+  }
+  if (!password) {
+    setAuthMsg('กรุณากรอก Password (รหัสผ่าน)', 'error');
+    if (passEl) passEl.focus();
+    return;
+  }
+  if (password.length < 4) {
+    setAuthMsg('รหัสผ่านต้องมีความยาวอย่างน้อย 4 ตัวอักษร', 'error');
+    if (passEl) passEl.focus();
+    return;
+  }
+
+  setAuthMsg(isRegisterMode ? 'กำลังลงทะเบียนบัญชีใหม่...' : 'กำลังตรวจสอบข้อมูลเข้าสู่ระบบ...', 'info');
+  if (btn) {
+    btn.disabled = true;
+    btn.style.opacity = '0.7';
+  }
+
   const params = new URLSearchParams();
   params.append('username', username);
   params.append('password', password);
@@ -108,24 +152,48 @@ async function auth() {
         const data = await res.json();
         localStorage.setItem('jwt_token', data.access_token);
         localStorage.setItem('username', username);
-        location.reload();
+        setAuthMsg('เข้าสู่ระบบสำเร็จ กำลังเข้าสู่หน้าหลัก...', 'success');
+        setTimeout(() => location.reload(), 600);
       } else {
-        alert('สมัครสมาชิกสำเร็จแล้ว! กรุณากรอกรหัสผ่านเพื่อเข้าสู่ระบบ');
-        setAuthMode(false);
+        setAuthMsg('สมัครสมาชิกสำเร็จ! กำลังสลับไปหน้าเข้าสู่ระบบ...', 'success');
+        setTimeout(() => {
+          setAuthMode(false);
+          if ($('lUser')) $('lUser').value = username;
+          setAuthMsg('สมัครสมาชิกสำเร็จแล้ว กรุณากรอกรหัสผ่านเพื่อเข้าสู่ระบบ', 'success');
+        }, 1200);
       }
     } else {
       const err = await res.json().catch(() => ({}));
-      alert('ข้อผิดพลาด: ' + (err.detail || 'ไม่สามารถดำเนินการได้'));
+      const errorMsg = err.detail || 'เกิดข้อผิดพลาด ไม่สามารถดำเนินการได้';
+      setAuthMsg('ข้อผิดพลาด: ' + errorMsg, 'error');
     }
   } catch (e) {
     console.error('API Error:', e);
-    alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้\n(' + e.message + ')\n\nหากทดสอบในเครื่อง ให้แน่ใจว่าเปิด Uvicorn ทิ้งไว้');
+    setAuthMsg('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบอินเทอร์เน็ตหรือสถานะของเซิร์ฟเวอร์', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    }
   }
 }
 
-// Bind auth buttons
+// Bind auth buttons and keydown listeners
 if ($('lBtn')) $('lBtn').onclick = auth;
 if ($('rBtn')) $('rBtn').onclick = () => setAuthMode(!isRegisterMode);
+
+['lUser', 'lPass'].forEach(id => {
+  const el = $(id);
+  if (el) {
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        auth();
+      }
+    });
+    el.addEventListener('input', () => setAuthMsg('', ''));
+  }
+});
 
 // --- Profile UI Logic ---
 if ($('logoutBtn')) {
