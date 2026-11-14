@@ -95,13 +95,6 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
 
-class UserData(Base):
-    __tablename__ = "userdata"
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    items_json = Column(Text, default="[]")
-    settings_json = Column(Text, default="{}")
-
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="seemon API")
@@ -151,18 +144,11 @@ def register(username: str = Form(...), password: str = Form(...), db: Session =
         if db.query(User).filter(User.username == username).first():
             raise HTTPException(status_code=400, detail="Username นี้ถูกใช้งานแล้ว")
         
-        # Truncate to max 72 bytes (UTF-8 safe for bcrypt)
         password_bytes = password.encode('utf-8')[:72]
         safe_password = password_bytes.decode('utf-8', errors='ignore')
         hashed_password = pwd_context.hash(safe_password)
         user = User(username=username, hashed_password=hashed_password)
         db.add(user)
-        db.commit()
-        db.refresh(user)
-        
-        # Init empty user data
-        user_data = UserData(user_id=user.id, items_json="[]", settings_json="{}")
-        db.add(user_data)
         db.commit()
         
         return {"message": "สมัครสมาชิกสำเร็จ"}
@@ -186,36 +172,18 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
 
 @app.get("/data")
 @app.get("/api/data")
-def get_data(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    data = db.query(UserData).filter(UserData.user_id == user.id).first()
-    if not data:
-        return {"items": [], "settings": {}}
-    try:
-        items = json.loads(data.items_json) if data.items_json else []
-    except Exception:
-        items = []
-    try:
-        settings = json.loads(data.settings_json) if data.settings_json else {}
-    except Exception:
-        settings = {}
-    return {"items": items, "settings": settings}
+def get_data(user: User = Depends(get_current_user)):
+    # Data is pushed to Sheets, we return empty as the frontend will handle local state
+    return {"items": [], "settings": {}}
 
 @app.post("/data")
 @app.post("/api/data")
-def save_data(data: dict, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    userdata = db.query(UserData).filter(UserData.user_id == user.id).first()
-    if not userdata:
-        userdata = UserData(user_id=user.id)
-        db.add(userdata)
-    
+def save_data(data: dict, user: User = Depends(get_current_user)):
     items = data.get("items", [])
-    userdata.items_json = json.dumps(items)
-    userdata.settings_json = json.dumps(data.get("settings", {}))
-    db.commit()
     
-    # Sync to Google Sheets (Free) or AppSheet
+    # Sync to Google Sheets and AppSheet immediately
     sync_to_google_sheet(user.username, items)
     if APPSHEET_APP_ID and APPSHEET_ACCESS_KEY:
         sync_to_appsheet(user.username, items)
     
-    return {"message": "Data saved successfully"}
+    return {"message": "Data synced to Sheets/AppSheet successfully"}
