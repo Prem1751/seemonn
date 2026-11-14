@@ -139,9 +139,11 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 def register(username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
     try:
         username = username.strip()
+        print(f"DEBUG: Attempting registration for: {username}")
         if not username or not password:
             raise HTTPException(status_code=400, detail="กรุณากรอก Username และ Password")
         if db.query(User).filter(User.username == username).first():
+            print(f"DEBUG: Username exists: {username}")
             raise HTTPException(status_code=400, detail="Username นี้ถูกใช้งานแล้ว")
         
         password_bytes = password.encode('utf-8')[:72]
@@ -150,11 +152,13 @@ def register(username: str = Form(...), password: str = Form(...), db: Session =
         user = User(username=username, hashed_password=hashed_password)
         db.add(user)
         db.commit()
+        print(f"DEBUG: Registration successful for: {username}")
         
         return {"message": "สมัครสมาชิกสำเร็จ"}
     except HTTPException as he:
         raise he
     except Exception as e:
+        print(f"DEBUG: Registration error: {e}")
         raise HTTPException(status_code=500, detail=f"Server Error: {str(e)}")
 
 @app.post("/token")
