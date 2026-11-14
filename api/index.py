@@ -28,8 +28,10 @@ APPSHEET_ACCESS_KEY = os.getenv("APPSHEET_ACCESS_KEY", "")
 
 def sync_to_google_sheet(username: str, items: list):
     if not GOOGLE_SHEET_WEBHOOK_URL:
+        print("Sync skipped: GOOGLE_SHEET_WEBHOOK_URL is not set.")
         return
     try:
+        print(f"Syncing {len(items)} items to Google Sheet for {username}...")
         payload = json.dumps({
             "username": username,
             "items": items
@@ -39,14 +41,17 @@ def sync_to_google_sheet(username: str, items: list):
             data=payload,
             headers={"Content-Type": "application/json"}
         )
-        urllib.request.urlopen(req, timeout=5)
+        with urllib.request.urlopen(req, timeout=10) as response:
+            print(f"Sync response: {response.status}")
     except Exception as e:
-        print("Google Sheet sync warning:", e)
+        print("Google Sheet sync error:", e)
 
 def sync_to_appsheet(username: str, items: list):
     if not APPSHEET_APP_ID or not APPSHEET_ACCESS_KEY:
+        print("Sync skipped: APPSHEET credentials missing.")
         return
     try:
+        print(f"Syncing {len(items)} items to AppSheet for {username}...")
         url = f"https://api.appsheet.com/api/v2/apps/{APPSHEET_APP_ID}/tables/Transactions/Action"
         rows = [{
             "Id": item.get("id"),
@@ -67,9 +72,10 @@ def sync_to_appsheet(username: str, items: list):
             "ApplicationAccessKey": APPSHEET_ACCESS_KEY,
             "Content-Type": "application/json"
         })
-        urllib.request.urlopen(req, timeout=5)
+        with urllib.request.urlopen(req, timeout=10) as response:
+            print(f"AppSheet sync response: {response.status}")
     except Exception as e:
-        print("AppSheet sync warning:", e)
+        print("AppSheet sync error:", e)
 
 # SQLite needs check_same_thread=False, PostgreSQL does not
 if DATABASE_URL.startswith("sqlite"):

@@ -212,8 +212,11 @@ updateProfileUI();
 // Check Login on Startup
 const token = localStorage.getItem('jwt_token');
 if (!token) {
+  // Lock the UI
+  document.body.style.display = 'none';
   if ($('sLogin')) $('sLogin').classList.add('open');
   if ($('scrim')) $('scrim').classList.add('open');
+  document.body.style.display = '';
 } else {
   (async () => {
     try {
