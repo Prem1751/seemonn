@@ -12,7 +12,7 @@ import urllib.request
 from datetime import datetime, timedelta
 
 # Setup
-SECRET_KEY = os.getenv("SECRET_KEY", "SUPER_SECRET_KEY_SEEMON_APP")
+SECRET_KEY = os.getenv("SECRET_KEY", "A_VERY_LONG_AND_SECURE_SECRET_KEY_FOR_SEEMON_APP_2026_11_11_CHANGEME")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days session
 DATABASE_URL = os.getenv("DATABASE_URL", "")
@@ -79,7 +79,7 @@ else:
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["pbkdf2_sha256", "bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # Database Models
